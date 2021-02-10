@@ -26,12 +26,12 @@ def count_eq(f, hill, p, gridDensity=10):
     else:
         eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
-            return np.shape(eq)[1], eq  # number of columns is the number of equilibria found
+            return np.shape(eq)[0], eq  # number of rows is the number of equilibria found
         else:
             eq = f.find_equilibria(gridDensity * 2, hill, p)
             if eq is None:
                 print(72)
-            return np.shape(eq)[1], eq
+            return np.shape(eq)[0], eq
 
 
 def estimate_saddle_node(f, hill, p, gridDensity=10):
@@ -96,13 +96,44 @@ def bisection(f, hill0, hill1, p, n_steps):
                 nEq1 = nEqmiddle
                 Eq1 = EqMiddle
             else:
-                return hill_middle, EqMiddle
+                return from_eqs_select_saddle_eq(Eq0, EqMiddle)
+                # doesn't matter which side you choose, the extra equilibrium will always be the saddle eqs
         else:
             break
     if nEq0 > nEq1:
-        return hill0, Eq0
+        return from_eqs_select_saddle_eq(Eq0, Eq1)
+
+
+def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
+    # assumption: there is a different number of equilibria at 1 and at 0, select the equilibrium that is most
+    # likely undergoing saddle node bifurcation
+    # equilibria are stored as row vectors
+
+    if equilibria_at_0.shape[0] == equilibria_at_1.shape[0]:
+        warnings('NO - this cannot be - saddle nodes do not occur if the number of equilibria do not change')
+    elif abs(equilibria_at_0.shape[0] - equilibria_at_1.shape[0])>2:
+        warnings('NO - this cannot be - saddles do not occur if the number of equilibria changes by more than 2')
+    if equilibria_at_0.shape[0] > equilibria_at_1.shape[0]:
+        temp = equilibria_at_0
+        equilibria_at_0 = equilibria_at_1
+        equilibria_at_1 = temp
+    # 0 has less equilibria than 1
+    for i in range(equilibria_at_0.shape[0]):
+        idx = find_nearest_row(equilibria_at_1, equilibria_at_0[i, :])
+        equilibria_at_1 = np.delete(equilibria_at_1, [idx], axis=0)
+    if equilibria_at_1.shape[1] == 1:
+        return equilibria_at_1
     else:
-        return hill1, Eq1
+        equilibrium = np.mean(equilibria_at_1, axis=1)
+        return equilibrium
+
+
+def find_nearest_row(array2D, value1D):
+    match = np.zeros((1, array2D.shape[1]))
+    for i in range(len(match)):
+        match[i] = np.norm(array2D[i, :] - value1D)
+    idx = match.argmin()
+    return idx
 
 
 def find_saddle_coef(hill_model, hillRange, parameter, freeParameter=0):
