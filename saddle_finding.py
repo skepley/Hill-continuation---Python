@@ -26,12 +26,13 @@ def count_eq(f, hill, p, gridDensity=10):
     else:
         eq = f.find_equilibria(gridDensity, hill, p)
         if eq is not None:
-            return np.shape(eq)[0], eq  # number of rows is the number of equilibria found
+
+            return np.shape(eq)[-1], eq  # number of rows is the number of equilibria found
         else:
             eq = f.find_equilibria(gridDensity * 2, hill, p)
             if eq is None:
                 print(72)
-            return np.shape(eq)[0], eq
+            return np.shape(eq)[-1], eq
 
 
 def estimate_saddle_node(f, hill, p, gridDensity=10):
@@ -53,7 +54,6 @@ def estimate_saddle_node(f, hill, p, gridDensity=10):
         n_steps = int(np.ceil((hill[-1] - hill[0]) / 5))
         # try:
         hill_SN, eqs = bisection(f, hill[0], hill[-1], p, n_steps)
-
         # except TypeError:
         #    print(hill[0], hill[-1], p, n_steps)
 
@@ -96,12 +96,20 @@ def bisection(f, hill0, hill1, p, n_steps):
                 nEq1 = nEqmiddle
                 Eq1 = EqMiddle
             else:
-                return from_eqs_select_saddle_eq(Eq0, EqMiddle)
+                return hill_middle, from_eqs_select_saddle_eq(Eq0, EqMiddle)
                 # doesn't matter which side you choose, the extra equilibrium will always be the saddle eqs
         else:
             break
-    if nEq0 > nEq1:
-        return from_eqs_select_saddle_eq(Eq0, Eq1)
+    if nEq0 is not nEq1:
+        if is_vector(Eq0):
+            Eq0 = Eq0[np.newaxis, :]
+        if is_vector(Eq1):
+            Eq1 = Eq1[np.newaxis, :]
+        if nEq0 > nEq1:
+            hill = hill0
+        else:
+            hill = hill1
+        return hill, from_eqs_select_saddle_eq(Eq0, Eq1)
 
 
 def from_eqs_select_saddle_eq(equilibria_at_0, equilibria_at_1):
